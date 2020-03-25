@@ -1,0 +1,49 @@
+- name: Install MariaDB Package
+  apt:
+    pkg: mariadb-server
+    state: latest
+    update_cache: yes
+
+- name: Install Pip for python3-pip
+  apt:
+    pkg: python3-pip
+    state: latest
+    update_cache: yes
+
+- name: Install PyMySQL
+  pip:
+    name: PyMySQL
+
+- name: Start MariaDB Service
+  service:
+    name: mariadb
+    state: started
+    enabled: yes
+
+- name: Copy MariaDB test.sql
+  copy:
+    src: files/test.sql
+    dest: /tmp/ansible_test.sql
+
+- name: Render configuration to /root
+  template:
+    src: templates/my.cnf
+    dest: /root/.my.cnf
+
+- name: Create MariaDB User
+  become: sudo
+  mysql_user:
+    login_user: root
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    name: "{{ dbuser }}"
+    password: "{{ dbpasswd }}"
+    priv: "{{ dbname }}.*:ALL"
+    host: '%'
+    state: present
+
+- name: Import MariaDB Databases
+  become: sudo
+  mysql_db:
+    name: "{{ dbname }}"
+    state: import
+    target: /tmp/ansible_test.sql
